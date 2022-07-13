@@ -9,6 +9,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Logging;
 using Microsoft.IdentityModel.Tokens;
+using Newtonsoft.Json;
 using System;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -39,38 +40,8 @@ namespace EmployeeManagerment.Controllers
             var result = await UserService.Login(request);
             if (result.Success == false)
                 return BadRequest(result.Message);
-            var userPricipal = this.ValidateToken(result.ResultObject.Token);
-            var authProperties = new AuthenticationProperties
-            {
-                ExpiresUtc = DateTimeOffset.UtcNow.AddMinutes(10),
-                IsPersistent = false
-            };
-            try
-            {
-                HttpContext.Session.SetString("Token", result.ResultObject.Token);
-                await HttpContext.SignInAsync(
-                        CookieAuthenticationDefaults.AuthenticationScheme,
-                       userPricipal,
-                        authProperties);
-            }catch(Exception ex)
-            {
-                Console.WriteLine(ex.ToString());
-            }
-            
-            return Ok(result);
-        }
-        private ClaimsPrincipal ValidateToken(string jwtToken)
-        {
-            IdentityModelEventSource.ShowPII = true;
-            SecurityToken validatedToken;
-            TokenValidationParameters validationParameters = new TokenValidationParameters();
-            validationParameters.ValidateLifetime = true;
-
-            validationParameters.ValidAudience = Configuration["Token:Issuer"];
-            validationParameters.ValidIssuer = Configuration["Token:Issuer"];
-            validationParameters.IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Configuration["Token:Key"]));
-            ClaimsPrincipal principal = new JwtSecurityTokenHandler().ValidateToken(jwtToken, validationParameters, out validatedToken);
-            return principal;
+            Console.WriteLine(result.ResultObject.Token);
+            return Ok(result.ResultObject);
         }
         [HttpPost("register")]
         [AllowAnonymous]
@@ -84,10 +55,15 @@ namespace EmployeeManagerment.Controllers
             return Ok(result.ResultObject);
         }
         [HttpPost("logout")]
-        public async Task<IActionResult> Logout()
+        public IActionResult Logout()
         {
-            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
             return Ok();
+        }
+        [HttpGet("all")]
+        public async Task<IActionResult> GetAll()
+        {
+            var result = await UserService.GetAll();
+            return Ok(result);
         }
 
     }

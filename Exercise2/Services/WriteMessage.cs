@@ -12,6 +12,9 @@ namespace EmployeeManagerment.Services
         void IWriteMessage.WriteMessage(string message)
         {
             Logger.LogInformation(message);
+            //Logger.LogDebug(message);
+            //Logger.LogWarning(message); 
+            //Logger.LogError(message);
         }
 
     }

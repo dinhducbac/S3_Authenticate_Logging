@@ -1,11 +1,15 @@
 ﻿using EmployeeManagerment.Entity;
 using EmployeeManagerment.Models;
+using Exercise2.EF;
 using Exercise2.Models;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System;
+using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
+using System.Linq;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
@@ -17,21 +21,32 @@ namespace EmployeeManagerment.Services
         public readonly UserManager<AppUser> UserManager;
         public readonly SignInManager<AppUser> SignInManager;
         public readonly IConfiguration Configuration;
+        public readonly EmployeeDBContext Db;
         public UserService(UserManager<AppUser> userManager, SignInManager<AppUser> signInManager
-            , IConfiguration configuration)
+            , IConfiguration configuration, EmployeeDBContext db)
         {
             UserManager = userManager;
             SignInManager = signInManager;
             Configuration = configuration;
+            Db = db;
         }
+
+        public async Task<APIResult<List<UserViewModel>>> GetAll()
+        {
+            var user = await Db.AppUsers.Select(user => new UserViewModel() { UserName = user.UserName, Email = user.Email })
+                .ToListAsync();
+            return new APIResult<List<UserViewModel>>() { Success = true, Message ="Successful", ResultObject = user};
+        }
+
         public async Task<APIResult<UserViewModel>> Login(LoginRequest request)
         {
             var user = await UserManager.FindByNameAsync(request.UserName);
-            if(user == null)
+            if (user == null)
             {
-                return new APIResult<UserViewModel>(){ Success = false, Message = "Can't not find Username!"};
+                return new APIResult<UserViewModel>() { Success = false, Message = "Can't not find Username!" };
             }
-            var result = await SignInManager.PasswordSignInAsync(user, request.Password, request.RememberMe, true);
+            var result = await SignInManager.PasswordSignInAsync(user, request.Password,
+                request.RememberMe == null ? false : (bool)request.RememberMe, true);
             if (!result.Succeeded)
             {
                 return new APIResult<UserViewModel>() { Success = false, Message = "Login failed!" }; ;
@@ -60,6 +75,7 @@ namespace EmployeeManagerment.Services
                     Token = new JwtSecurityTokenHandler().WriteToken(token)
                 }
             };
+
         }
 
         public async Task<APIResult<string>> Register(RegisterRequest request)
@@ -72,7 +88,9 @@ namespace EmployeeManagerment.Services
                 UserName = request.UserName,
                 Email = request.Email
             };
+            var transaction = await Db.Database.BeginTransactionAsync();
             var result = await UserManager.CreateAsync(user, request.Password);
+            await transaction.CommitAsync();
             if (!result.Succeeded)
                 return new APIResult<string>() { Success = false, Message = "Register failed!", ResultObject = result.ToString() };
             return new APIResult<string>() { Success = true, Message = "Register successful!", ResultObject = "Register successful!" };

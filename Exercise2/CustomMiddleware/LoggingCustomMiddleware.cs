@@ -29,18 +29,23 @@ namespace EmployeeManagerment.CustomMiddleware
                     //writeMessage.WriteMessage("789789789");
                     try
                     {
+                        Stream orginalStream = httpContext.Response.Body;
                         responseBodyStream.Seek(0, SeekOrigin.Begin);
                         var resBodyText = await new StreamReader(responseBodyStream).ReadToEndAsync();
-                        var resBodyParam = JsonConvert.DeserializeObject<ResultViewModel>(resBodyText);
-                        writeMessage.WriteMessage($"'{resBodyParam.ResultObject.UserName}' đã đăng nhập");
-                        writeMessage.WriteMessage($"Thông tin: Username: {resBodyParam.ResultObject.UserName}, Email: {resBodyParam.ResultObject.Email}, Token: {resBodyParam.ResultObject.Token}");
+                        var resBodyParam = JsonConvert.DeserializeObject<UserViewModel>(resBodyText);
+                        writeMessage.WriteMessage($"'{resBodyParam.UserName}' đã đăng nhập");
+                        writeMessage.WriteMessage($"Thông tin: Username: {resBodyParam.UserName}, Email: {resBodyParam.Email}, Token: {resBodyParam.Token}");
+                        responseBodyStream.Position = 0;
+                        await responseBodyStream.CopyToAsync(orginalStream);
 
+                        httpContext.Response.Body = orginalStream;
                     }
                     catch (Exception ex)
                     {
-
+                        Console.WriteLine(ex);
+                        writeMessage.WriteMessage("Lỗi: " + ex.Message);
                     }
-                    
+                   
                 }
             }
             else

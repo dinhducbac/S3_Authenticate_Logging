@@ -22,6 +22,7 @@ namespace Exercise2.EF
             builder.Entity<IdentityRoleClaim<int>>().ToTable("RoleClaim");
             builder.Entity<IdentityUserToken<int>>().ToTable("UserToken").HasKey(x => x.UserId);
             builder.Seed();
+           // base.OnModelCreating(builder);
            
         }
         public EmployeeDBContext(DbContextOptions options) : base(options)

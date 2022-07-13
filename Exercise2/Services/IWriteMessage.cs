@@ -1,4 +1,6 @@
-﻿namespace EmployeeManagerment.Services
+﻿using System.Threading.Tasks;
+
+namespace EmployeeManagerment.Services
 {
     public interface IWriteMessage
     {

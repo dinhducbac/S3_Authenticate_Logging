@@ -33,7 +33,6 @@ namespace Exercise2
 
         public IConfiguration Configuration { get; }
 
-        // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddDbContext<EmployeeDBContext>( option =>
@@ -46,23 +45,7 @@ namespace Exercise2
                 options.Password.RequireUppercase = false;
                 options.Password.RequireNonAlphanumeric = false;
                 options.Password.RequireDigit = false;
-            })
-                .AddEntityFrameworkStores<EmployeeDBContext>()
-                .AddDefaultTokenProviders();
-
-            services.AddSession();
-
-            services.Configure<KestrelServerOptions>(options =>
-            {
-                options.AllowSynchronousIO = true;
-            });
-
-            // If using IIS:
-            services.Configure<IISServerOptions>(options =>
-            {
-                options.AllowSynchronousIO = true;
-            });
-           
+            }).AddEntityFrameworkStores<EmployeeDBContext>();
 
             services.AddScoped<IWriteMessage, WriteMessage>();
             services.AddTransient<IEmployeeService, EmployeeService>();
@@ -94,10 +77,7 @@ namespace Exercise2
                                 {
                                     Type = ReferenceType.SecurityScheme,
                                     Id = "Bearer"
-                                },
-                                Scheme = "oauth2",
-                                Name = "Bearer",
-                                In = ParameterLocation.Header,
+                                }
                         },
                         new List<string>()
                       }
@@ -124,28 +104,17 @@ namespace Exercise2
                     ClockSkew = System.TimeSpan.Zero,
                     IssuerSigningKey = new SymmetricSecurityKey(signingKeyBytes)
                 };
-            }).AddCookie(options =>
-            {
-                options.ExpireTimeSpan = TimeSpan.FromMinutes(20);
-                options.SlidingExpiration = true;
-                options.AccessDeniedPath = "/Forbidden/";
             });
         }
 
-        // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env,ILoggerFactory loggerFactory)
+        public void Configure(IApplicationBuilder app)
         {
             app.UseRouting();
-            app.UseSession();
-            //app.UseSwagger();
+            app.UseSwagger();
             app.UseAuthentication();
             app.UseAuthorization();
             app.UseLoggingCustomMiddleware();
 
-            app.UseSwagger(options =>
-            {
-                options.SerializeAsV2 = true;
-            });
             app.UseSwaggerUI(c =>
                {
                    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Swagger EmployeeManagerment");
