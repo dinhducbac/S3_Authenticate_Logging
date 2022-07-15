@@ -8,29 +8,28 @@ using Exercise2.Entity;
 using EmployeeManagerment.Models;
 using System.Runtime.ExceptionServices;
 using System;
+using EmployeeManagerment.Respository.EmployeeRepository;
 
 namespace Exercise2.Services
 {
     public class EmployeeService : IEmployeeService
     {
-        public readonly EmployeeDBContext Db;
-        public EmployeeService(EmployeeDBContext db)
+        private IEmployeeRepository _employeeRepository;
+
+        public EmployeeService(IEmployeeRepository employeeRepository)
         {
-            Db = db;
+            _employeeRepository = employeeRepository;
         }
 
-        public async Task<APIResult<EmployeeViewModel>> CreateAsync(EmployeeCreateRequest request)
+        public async Task<APIResult<EmployeeModel>> CreateAsync(EmployeeCreateRequest request)
         {
-            using var transaction = Db.Database.BeginTransaction();
-            var apiResult = new APIResult<EmployeeViewModel>();
+            var apiResult = new APIResult<EmployeeModel>();
             try
             {
                 var employee = new Employee();
                 employee.Name = request.Name;
                 employee.PositionID = request.PositionId;
-                await Db.Employees.AddAsync(employee);
-                await Db.SaveChangesAsync();
-                await transaction.CommitAsync();
+                employee = await _employeeRepository.CreateAsync(employee);
                 var employeeViewModel = await GetEmployeeAsync(employee.Id);
                 apiResult.Success = true;
                 apiResult.Message = "Create success!";
@@ -40,7 +39,6 @@ namespace Exercise2.Services
             { 
                 apiResult.Success = false;
                 apiResult.Message = $"Create failed, Exeption: {ex.Message}, line {ex.StackTrace}";
-                await transaction.RollbackAsync();
             }
             return apiResult;
         }
@@ -48,19 +46,16 @@ namespace Exercise2.Services
         public async Task<APIResult<string>> DeleteAsync(int id)
         {
             var apiResult = new APIResult<string>();
-            using var transaction = Db.Database.BeginTransaction();
             try
             {
-                var employee = await Db.Employees.FirstOrDefaultAsync(emp => emp.Id == id);
+                var employee = await _employeeRepository.GetByIdAsync(id);
                 if (employee == null)
                 {
                     apiResult.Success = false;
                     apiResult.Message = "Cannot find employee!";
                     return apiResult;
                 }
-                Db.Employees.Remove(employee);
-                await Db.SaveChangesAsync();
-                await transaction.CommitAsync();
+                await _employeeRepository.DeleteAsync(employee);
                 apiResult.Success = true;
                 apiResult.Message = "Delete success!";
             }
@@ -68,49 +63,33 @@ namespace Exercise2.Services
             {
                 apiResult.Success = false;
                 apiResult.Message = $"Delete failed, Exeption: {ex.Message}, line {ex.StackTrace}";
-                await transaction.RollbackAsync();
             }
             return apiResult;
         }
 
-        public async Task<APIResult<List<EmployeeViewModel>>> GetAllAsync(int pageIndex, int pageSize)
+        public async Task<APIResult<List<EmployeeModel>>> GetAllAsync(int pageIndex, int pageSize)
         {
-            //var employees = await Db.Employees.Join(
-            //        Db.Positions,
-            //        emp => emp.PositionID,
-            //        pos => pos.Id,
-            //        (emp, pos) => new { emp.Id, emp.Name, Position = pos.Name }
-            //    ).Skip((pageIndex - 1) * pageSize).Take(pageSize).Select(p=> new EmployeeViewModel(p.Id,p.Name,p.Position))
-            //    .ToListAsync();
-            var employees = await Db.Employees
-                .Include(p => p.Position)
-                .Skip((pageIndex - 1) * pageSize)
-                .Take(pageSize)
-                .Select(p => new EmployeeViewModel(p.Id, p.Name, p.Position.Name))
-                .ToListAsync();
-            return new APIResult<List<EmployeeViewModel>>() { Success = true, Message = "Success", ResultObject = employees };
+            var employees = await _employeeRepository.GetAllAsync(pageIndex,pageSize);
+            return new APIResult<List<EmployeeModel>>() { Success = true, Message = "Success", ResultObject = employees };
         }
 
-        public async Task<APIResult<EmployeeViewModel>> GetEmployeeAsync(int id)
+        public async Task<APIResult<EmployeeModel>> GetEmployeeAsync(int id)
         {
-            var employees = await Db.Employees.Where(emp=>emp.Id == id)
-                .Join(
-                    Db.Positions, 
-                    emp => emp.PositionID,
-                    pos => pos.Id,
-                    (emp,pos) => new { emp.Id,emp.Name, Position = pos.Name}
-                ).FirstOrDefaultAsync();
-            var employeeViewModel = new EmployeeViewModel(employees.Id, employees.Name, employees.Position);
-            return new APIResult<EmployeeViewModel>() { Success = true, Message = "Success", ResultObject = employeeViewModel };
+            var employee = await _employeeRepository.GetByIdAsync(id);
+            if (employee == null)
+            {
+                return new APIResult<EmployeeModel>() { Success = false, Message = "Can not find employee"};
+            }
+            var employees = await _employeeRepository.GetModelByIdAsync(id);
+            return new APIResult<EmployeeModel>() { Success = true, Message = "Success", ResultObject = employees };
         }
 
-        public async Task<APIResult<EmployeeViewModel>> UpdateAsync(int id, EmployeeUpdateRequest request)
+        public async Task<APIResult<EmployeeModel>> UpdateAsync(int id, EmployeeUpdateRequest request)
         {
-            using var transaction = Db.Database.BeginTransaction();
-            var apiResult = new APIResult<EmployeeViewModel>();
+            var apiResult = new APIResult<EmployeeModel>();
             try
             { 
-                var employee = await Db.Employees.FirstOrDefaultAsync(emp => emp.Id == id);
+                var employee = await _employeeRepository.GetByIdAsync(id);
                 if (employee == null)
                 {
                     apiResult.Success = false;
@@ -119,9 +98,7 @@ namespace Exercise2.Services
                 }
                 employee.Name = request.Name;
                 employee.PositionID = request.PositionId;
-                Db.Employees.Update(employee);
-                await Db.SaveChangesAsync();
-                await transaction.CommitAsync();
+                await _employeeRepository.SavechangeAsync();
                 var employeeModel = await GetEmployeeAsync(id);
                 apiResult.Success = true;
                 apiResult.Message = "Update success";
@@ -132,7 +109,6 @@ namespace Exercise2.Services
             {
                 apiResult.Success = false;
                 apiResult.Message = $"Update failed, Exeption: {ex.Message}, line {ex.StackTrace}";
-                await transaction.RollbackAsync();
             }
             return apiResult;
         }

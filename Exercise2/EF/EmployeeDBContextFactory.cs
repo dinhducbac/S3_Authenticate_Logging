@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Configuration;
+using System;
 using System.IO;
 
 namespace Exercise2.EF
@@ -11,7 +12,7 @@ namespace Exercise2.EF
         {
             IConfigurationRoot configuration = new ConfigurationBuilder()
                .SetBasePath(Directory.GetCurrentDirectory())
-               .AddJsonFile("appsettings.json")
+               .AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")}.json")
                .Build();
             var connectStrings = configuration.GetConnectionString("EmployeeConnectionStrings");
             var optionsBuilder = new DbContextOptionsBuilder<EmployeeDBContext>();

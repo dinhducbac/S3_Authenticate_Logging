@@ -1,4 +1,5 @@
 ﻿using EmployeeManagerment.Models;
+using EmployeeManagerment.Respository.PositionRepository;
 using Exercise2.EF;
 using Exercise2.Entity;
 using Exercise2.Models;
@@ -12,23 +13,20 @@ namespace EmployeeManagerment.Services
 {
     public class PositionService : IPositionService
     {
-        public readonly EmployeeDBContext Db;
-        public PositionService(EmployeeDBContext dBContext)
+        private readonly IPositionRepository _positionRepository;
+        public PositionService(IPositionRepository positionRepository)
         {
-            Db = dBContext;
+            _positionRepository = positionRepository;
         }
 
         public async Task<APIResult<Position>> CreateAsync(PositionCreateRequest request)
         {
-            using var transaction = Db.Database.BeginTransaction();
             var apiResult = new APIResult<Position>();
             try
             {
                 var positions = new Position();
                 positions.Name = request.Name;
-                await Db.Positions.AddAsync(positions);
-                await Db.SaveChangesAsync();
-                await transaction.CommitAsync();
+                positions = await _positionRepository.CreateAsync(positions);
                 var employeeViewModel = await GetPositionByIdAsync(positions.Id);
                 apiResult.Success = true;
                 apiResult.Message = "Create success!";
@@ -38,7 +36,6 @@ namespace EmployeeManagerment.Services
             {
                 apiResult.Success = false;
                 apiResult.Message = $"Create failed, Exeption: {ex.Message}, line {ex.StackTrace}";
-                await transaction.RollbackAsync();
             }
             return apiResult;
         }
@@ -46,7 +43,8 @@ namespace EmployeeManagerment.Services
         public async Task<APIResult<Position>> GetPositionByIdAsync(int id)
         {
             var apiResult = new APIResult<Position>();
-            var position = await Db.Positions.FirstOrDefaultAsync(pos => pos.Id == id);
+            var position = await _positionRepository.GetByIdAsync(id);
+
             if (position == null)
             {
                 apiResult.Success = false;
@@ -63,17 +61,16 @@ namespace EmployeeManagerment.Services
 
         public async Task<APIResult<List<Position>>> GetAllAsync(int pageIndex, int pageSize)
         {
-            var positions = await Db.Positions.Skip((pageIndex - 1) * pageSize).Take(pageSize).ToListAsync();
+            var positions = await _positionRepository.GetAllAsync(pageIndex,pageSize);
             return new APIResult<List<Position>>() { Success = true, Message = "Successful!", ResultObject = positions };
         }
 
         public async Task<APIResult<Position>> UpdateAsync(int id, PositionUpdateRequest request)
         {
-            using var transaction = Db.Database.BeginTransaction();
             var apiResult = new APIResult<Position>();
             try
             {
-                var position = await Db.Positions.FirstOrDefaultAsync(pos => pos.Id == id);
+                var position = await _positionRepository.GetByIdAsync(id);
                 if (position == null)
                 {
                     apiResult.Success = false;
@@ -81,9 +78,7 @@ namespace EmployeeManagerment.Services
                     return apiResult;
                 }
                 position.Name = request.Name;
-                Db.Positions.Update(position);
-                await Db.SaveChangesAsync();
-                await transaction.CommitAsync();
+                await _positionRepository.SavechangeAsync();
                 var employeeModel = await GetPositionByIdAsync(id);
                 apiResult.Success = true;
                 apiResult.Message = "Update success";
@@ -94,7 +89,6 @@ namespace EmployeeManagerment.Services
             {
                 apiResult.Success = false;
                 apiResult.Message = $"Update failed, Exeption: {ex.Message}, line {ex.StackTrace}";
-                await transaction.RollbackAsync();
             }
             return apiResult;
         }
@@ -102,19 +96,16 @@ namespace EmployeeManagerment.Services
         public async Task<APIResult<string>> DeleteAsync(int id)
         {
             var apiResult = new APIResult<string>();
-            using var transaction = Db.Database.BeginTransaction();
             try
             {
-                var position = await Db.Positions.FirstOrDefaultAsync(pos => pos.Id == id);
+                var position = await _positionRepository.GetByIdAsync(id);
                 if (position == null)
                 {
                     apiResult.Success = false;
                     apiResult.Message = "Cannot find employee!";
                     return apiResult;
                 }
-                Db.Positions.Remove(position);
-                await Db.SaveChangesAsync();
-                await transaction.CommitAsync();
+                await _positionRepository.DeleteAsync(position);
                 apiResult.Success = true;
                 apiResult.Message = "Delete success!";
             }
@@ -122,7 +113,6 @@ namespace EmployeeManagerment.Services
             {
                 apiResult.Success = false;
                 apiResult.Message = $"Delete failed, Exeption: {ex.Message}, line {ex.StackTrace}";
-                await transaction.RollbackAsync();
             }
             return apiResult;
         }

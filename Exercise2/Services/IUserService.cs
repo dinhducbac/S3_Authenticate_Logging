@@ -7,8 +7,8 @@ namespace EmployeeManagerment.Services
 {
     public interface IUserService
     {
-        public Task<APIResult<List<UserViewModel>>> GetAll();
-        public Task<APIResult<UserViewModel>> Login(LoginRequest request);
+        public Task<APIResult<List<UserModel>>> GetAll();
+        public Task<APIResult<UserModel>> Login(LoginRequest request);
         public Task<APIResult<string>> Register(RegisterRequest request);
     }
 }

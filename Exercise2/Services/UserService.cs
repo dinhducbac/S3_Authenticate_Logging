@@ -1,5 +1,6 @@
 ﻿using EmployeeManagerment.Entity;
 using EmployeeManagerment.Models;
+using EmployeeManagerment.Respository.AppUserRepository;
 using Exercise2.EF;
 using Exercise2.Models;
 using Microsoft.AspNetCore.Identity;
@@ -21,35 +22,34 @@ namespace EmployeeManagerment.Services
         public readonly UserManager<AppUser> UserManager;
         public readonly SignInManager<AppUser> SignInManager;
         public readonly IConfiguration Configuration;
-        public readonly EmployeeDBContext Db;
+        private readonly IAppUserRepository _appUserRepository;
         public UserService(UserManager<AppUser> userManager, SignInManager<AppUser> signInManager
-            , IConfiguration configuration, EmployeeDBContext db)
+            , IConfiguration configuration, IAppUserRepository appUserRepository)
         {
             UserManager = userManager;
             SignInManager = signInManager;
             Configuration = configuration;
-            Db = db;
+            _appUserRepository = appUserRepository;
         }
 
-        public async Task<APIResult<List<UserViewModel>>> GetAll()
+        public async Task<APIResult<List<UserModel>>> GetAll()
         {
-            var user = await Db.AppUsers.Select(user => new UserViewModel() { UserName = user.UserName, Email = user.Email })
-                .ToListAsync();
-            return new APIResult<List<UserViewModel>>() { Success = true, Message ="Successful", ResultObject = user};
+            var user = await _appUserRepository.GetModelAll();
+            return new APIResult<List<UserModel>>() { Success = true, Message ="Successful", ResultObject = user};
         }
 
-        public async Task<APIResult<UserViewModel>> Login(LoginRequest request)
+        public async Task<APIResult<UserModel>> Login(LoginRequest request)
         {
-            var user = await UserManager.FindByNameAsync(request.UserName);
+            var user = await _appUserRepository.FindByNameAsync(request.UserName);
             if (user == null)
             {
-                return new APIResult<UserViewModel>() { Success = false, Message = "Can't not find Username!" };
+                return new APIResult<UserModel>() { Success = false, Message = "Can't not find Username!" };
             }
-            var result = await SignInManager.PasswordSignInAsync(user, request.Password,
+            var result = await _appUserRepository.SignInAsync(user, request.Password,
                 request.RememberMe == null ? false : (bool)request.RememberMe, true);
             if (!result.Succeeded)
             {
-                return new APIResult<UserViewModel>() { Success = false, Message = "Login failed!" }; ;
+                return new APIResult<UserModel>() { Success = false, Message = "Login failed!" }; ;
             }
             var claims = new[]
             {
@@ -64,11 +64,11 @@ namespace EmployeeManagerment.Services
                 signingCredentials: creds
             );
 
-            return new APIResult<UserViewModel>()
+            return new APIResult<UserModel>()
             {
                 Success = true,
                 Message = "Login successful!",
-                ResultObject = new UserViewModel()
+                ResultObject = new UserModel()
                 {
                     UserName = request.UserName,
                     Email = user.Email,
@@ -80,7 +80,7 @@ namespace EmployeeManagerment.Services
 
         public async Task<APIResult<string>> Register(RegisterRequest request)
         {
-            var checkUser = await UserManager.FindByNameAsync(request.UserName);
+            var checkUser = await _appUserRepository.FindByNameAsync(request.UserName);
             if(checkUser != null)
                 return new APIResult<string>() { Success = false, Message = "Register failed!", ResultObject = $"Already has username '{request.UserName}'" };
             var user = new AppUser()
@@ -88,9 +88,7 @@ namespace EmployeeManagerment.Services
                 UserName = request.UserName,
                 Email = request.Email
             };
-            var transaction = await Db.Database.BeginTransactionAsync();
-            var result = await UserManager.CreateAsync(user, request.Password);
-            await transaction.CommitAsync();
+            var result = await _appUserRepository.CreateAppUser(user,request.Password);
             if (!result.Succeeded)
                 return new APIResult<string>() { Success = false, Message = "Register failed!", ResultObject = result.ToString() };
             return new APIResult<string>() { Success = true, Message = "Register successful!", ResultObject = "Register successful!" };

@@ -26,8 +26,10 @@ namespace Exercise2
             Host.CreateDefaultBuilder(args)
                 .ConfigureWebHostDefaults(webBuilder =>
                 {
+                    webBuilder.UseEnvironment(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"));
                     webBuilder.UseStartup<Startup>();
                 })
+               
             .UseSerilog((hostingContext,loggerConfiguration) =>
             {
                 loggerConfiguration.ReadFrom.Configuration(hostingContext.Configuration);

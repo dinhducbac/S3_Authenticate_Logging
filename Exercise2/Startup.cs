@@ -1,5 +1,9 @@
 using EmployeeManagerment.CustomMiddleware;
 using EmployeeManagerment.Entity;
+using EmployeeManagerment.Respository;
+using EmployeeManagerment.Respository.AppUserRepository;
+using EmployeeManagerment.Respository.EmployeeRepository;
+using EmployeeManagerment.Respository.PositionRepository;
 using EmployeeManagerment.Services;
 using Exercise2.EF;
 using Exercise2.Services;
@@ -54,7 +58,13 @@ namespace Exercise2
             services.AddTransient<UserManager<AppUser>, UserManager<AppUser>>();
             services.AddTransient<SignInManager<AppUser>, SignInManager<AppUser>>();
             services.AddTransient<RoleManager<AppRole>, RoleManager<AppRole>>();
-            services.AddMvc();
+
+            services.AddTransient(typeof(IGenericRepository<>), typeof(GenericRepository<>));
+            services.AddTransient<IPositionRepository, PositionRepository>();
+            services.AddTransient<IEmployeeRepository, EmployeeRepository>();
+            services.AddTransient<IAppUserRepository, AppUserRepository>();
+
+            services.AddControllers();
             services.AddSwaggerGen(c =>
                 {
                     c.SwaggerDoc("v1", new OpenApiInfo { Title = "Swagger Employee Managerment", Version = "v1" });
@@ -64,7 +74,7 @@ namespace Exercise2
                         Enter 'Bearer  [your token]' in the text input below.",
                         Name = "Authorization",
                         In = ParameterLocation.Header,
-                        Type = SecuritySchemeType.ApiKey,
+                        Type = SecuritySchemeType.Http,
                         Scheme = "Bearer",
                         BearerFormat = "JWT"
                     });
@@ -107,7 +117,7 @@ namespace Exercise2
             });
         }
 
-        public void Configure(IApplicationBuilder app)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
             app.UseRouting();
             app.UseSwagger();

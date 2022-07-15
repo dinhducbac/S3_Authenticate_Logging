@@ -9,7 +9,7 @@ namespace EmployeeManagerment.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
+    //[Authorize]
     public class PositionController : ControllerBase
     {
         public readonly IPositionService PositionService;
